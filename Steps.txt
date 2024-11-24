@@ -1,0 +1,1412 @@
+The complete pre-plan checklist would be:
+
+Create the complete project structure 
+
+Backend setup complete
+
+terraform.tfvars updated [2]
+
+Lambda code zipped
+
+SQL files created
+
+Test files created
+
+All module configurations completed
+
+Root configuration files (main.tf, variables.tf, outputs.tf) completed
+
+
+
+
+1. Create the complete project structure first:
+
+# Make directory, change directory and create the bash script.
+
+mkdir my_terraform_project
+cd my_terraform_project
+touch create_project_structure.sh
+
+# Copy the script content into create_project_structure.sh
+
+
+#!/bin/bash
+
+# Set color codes for output
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+echo "Starting project structure creation..."
+
+# Create main directory
+mkdir -p environment_serverless1
+cd environment_serverless1
+
+# Create root level files
+echo "Creating root level files..."
+touch main.tf variables.tf outputs.tf
+
+# Create lambda directory and file
+echo "Creating lambda directory and files..."
+mkdir -p lambda
+touch lambda/transform.py
+
+# Create SQL directory and file
+echo "Creating SQL directory and files..."
+mkdir -p sql
+touch sql/create_table.sql
+
+# Create tests directory and file
+echo "Creating tests directory and files..."
+mkdir -p tests
+touch tests/api_payloads.json
+
+# Create modules directory
+echo "Creating modules and their files..."
+mkdir -p modules
+
+# List of modules to create
+modules=("api_gateway" "kinesis" "lambda" "storage" "athena" "quicksight")
+
+# Create module directories and their files
+for module in "${modules[@]}"; do
+    echo "Creating module: $module"
+    mkdir -p "modules/$module"
+    touch "modules/$module/main.tf"
+    touch "modules/$module/variables.tf"
+    touch "modules/$module/outputs.tf"
+done
+
+# Initialize git repository
+echo "Initializing git repository..."
+git init
+
+# Create .gitignore
+echo "Creating .gitignore..."
+cat > .gitignore << EOL
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files
+*.tfvars
+*.tfvars.json
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore backend configuration
+backend.hcl
+EOL
+
+# Display the created structure
+echo -e "${GREEN}Project structure created successfully!${NC}"
+echo "Directory structure:"
+if command -v tree &> /dev/null; then
+    tree
+else
+    find . -type d -o -type f | sort | sed 's/[^/]*\//  /g'
+fi
+
+echo -e "\n${GREEN}You can now proceed to add your Terraform configurations to these files.${NC}"
+
+# Give permisssions to the bash script.
+
+chmod +x create_project_structure.sh
+./create_project_structure.sh
+
+You should see the following files and folders:
+
+environment_serverless1/
+├── main.tf                 # Main Terraform configuration
+├── variables.tf            # Root variables
+├── outputs.tf              # Root outputs
+├── lambda/                 # Lambda function code
+│   └── transform.py        # The base64 transformation code
+├── sql/                    # SQL scripts
+│   └── create_table.sql    # Athena table creation
+├── tests/                  # Test data
+│   └── api_payloads.json   # API Gateway test payloads
+└── modules/
+    ├── api_gateway/        # API Gateway configuration
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── kinesis/           # Kinesis Firehose setup
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── lambda/            # Lambda configuration
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── storage/           # S3 buckets configuration
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── athena/           # Athena configuration
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    └── quicksight/       # QuickSight configuration
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
+
+# filling the root main.tf with place holder script.
+
+root main.tf
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+  required_version = ">= 1.0"
+
+  backend "s3" {
+    # These will be filled in by backend.hcl
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+
+
+
+
+#Create the backend infrastructure files:
+
+touch backend-setup.tf backend.hcl setup-terraform.sh
+
+# Copy the following placeholder script into backend.hcl 
+
+
+bucket         = "XXXXXXXXXXXXXXXXXXXXXX"
+key            = "datalake/terraform.tfstate"
+region         = "us-west-2"
+dynamodb_table = "terraform-locks"
+encrypt        = true
+
+
+2. Copy the following to backend-setup.tf:
+
+provider "aws" {
+  region = "us-west-2"  # or your preferred region
+}
+
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+resource "aws_s3_bucket" "terraform_state" {
+  bucket = "terraform-state-${random_string.suffix.result}"
+
+  # Prevent accidental deletion of this S3 bucket
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_s3_bucket_versioning" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = "terraform-locks"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
+
+output "s3_bucket_name" {
+  value       = aws_s3_bucket.terraform_state.id
+  description = "The name of the S3 bucket"
+}
+
+3. Copy the following to setup-terraform.sh 
+
+#!/bin/bash
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+echo "Setting up Terraform backend infrastructure..."
+
+# Initialize and apply backend setup
+terraform init
+terraform apply -auto-approve
+
+# Get the generated bucket name
+BUCKET_NAME=$(terraform output -raw s3_bucket_name)
+
+# Update backend.hcl with the correct bucket name
+sed -i "s/terraform-state-SUFFIX/$BUCKET_NAME/" backend.hcl
+
+echo -e "${GREEN}Backend infrastructure created successfully!${NC}"
+echo -e "S3 Bucket: ${GREEN}$BUCKET_NAME${NC}"
+echo -e "DynamoDB Table: ${GREEN}terraform-locks${NC}"
+
+# Initialize main Terraform configuration with backend
+echo "Initializing main Terraform configuration..."
+terraform init -backend-config=backend.hcl
+
+echo -e "${GREEN}Setup complete!${NC}"
+echo "You can now run terraform plan and terraform apply for your main configuration."
+
+
+4 Make the setup script executable and run it.
+
+chmod +x setup-terraform.sh
+
+
+# Use this to fill in your backend.hcl file with placeholder information
+before running 
+
+bucket         = "<output-from-previous-step>"
+key            = "datalake/terraform.tfstate"
+region         = "us-west-2"
+dynamodb_table = "terraform-locks"
+encrypt        = true
+
+./setup-terraform.sh
+
+
+ The name of the S3 bucket
+
+  Enter a value: costasbackend778
+
+   The path to the state file inside the bucket
+
+  Enter a value: 
+
+environment_serverless1/dev/terraform.tfstate
+environment_serverless1/staging/terraform.tfstate
+environment_serverless1/prod/terraform.tfstate
+
+
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+s3_bucket_name = "costasbackend778"
+Backend infrastructure created successfully!
+S3 Bucket: costasbackend778
+DynamoDB Table: terraform-locks
+Initializing main Terraform configuration...
+Initializing the backend...
+Do you want to copy existing state to the new backend?
+  Pre-existing state was found while migrating the previous "local" backend to the
+  newly configured "s3" backend. No existing state was found in the newly
+  configured "s3" backend. Do you want to copy this state to the new "s3"
+  backend? Enter "yes" to copy and "no" to start with an empty state.
+
+  Enter a value: yes
+
+Successfully configured the backend "s3"! Terraform will automatically
+use this backend unless the backend configuration changes.
+Initializing provider plugins...
+- Reusing previous version of hashicorp/aws from the dependency lock file
+- Reusing previous version of hashicorp/random from the dependency lock file
+- Using previously-installed hashicorp/aws v5.77.0
+- Using previously-installed hashicorp/random v3.6.3
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+Setup complete!
+You can now run terraform plan and terraform apply for your main configuration.
+costas778@DESKTOP-ZBook08:~/Environmentdl/my_terraform_project/environment_serverless1$ 
+
+
+/////////////////////////////////////////////////////////////////////////
+Troubleshooting
+
+
+  Enter a value: environment_serverless1/dev/terraform.tfstate
+
+╷
+│ Error: Terraform encountered problems during initialisation, including problems
+│ with the configuration, described below.
+│ 
+│ The Terraform configuration must be valid before initialization so that
+│ Terraform can determine which modules and providers need to be installed.
+│ 
+│ 
+╵
+╷
+│ Error: Missing region value
+│ 
+│   on main.tf line 14, in terraform:
+│   14:   backend "s3" {
+│ 
+│ The "region" attribute or the "AWS_REGION" or "AWS_DEFAULT_REGION" environment variables must
+│ be set.
+╵
+╷
+│ Error: Duplicate provider configuration
+│ 
+│   on main.tf line 19:
+│   19: provider "aws" {
+│ 
+│ A default (non-aliased) provider configuration for "aws" was already given at
+│ backend-setup.tf:1,1-15. If multiple configurations are required, set the "alias" argument
+│ for alternative configurations.
+╵
+╷
+│ Error: Duplicate provider configuration
+│ 
+│   on main.tf line 19:
+│   19: provider "aws" {
+│ 
+│ A default (non-aliased) provider configuration for "aws" was already given at
+│ backend-setup.tf:1,1-15. If multiple configurations are required, set the "alias" argument
+│ for alternative configurations.
+╵
+╷
+│ Error: Duplicate provider configuration
+│ 
+│   on main.tf line 19:
+│   19: provider "aws" {
+│ 
+│ A default (non-aliased) provider configuration for "aws" was already given at
+│ backend-setup.tf:1,1-15. If multiple configurations are required, set the "alias" argument
+│ for alternative configurations.
+╵
+Backend infrastructure created successfully!
+S3 Bucket: 
+DynamoDB Table: terraform-locks
+Initializing main Terraform configuration...
+Initializing the backend...
+╷
+│ Error: validating provider credentials: retrieving caller identity from STS: operation error STS: GetCallerIdentity, https response error StatusCode: 403, RequestID: a88378e2-ef57-4d7e-b220-8719694c33cc, api error InvalidClientTokenId: The security token included in the request is invalid.
+│ 
+│ 
+╵
+╷
+│ Error: Terraform encountered problems during initialisation, including problems
+│ with the configuration, described below.
+│ 
+│ The Terraform configuration must be valid before initialization so that
+│ Terraform can determine which modules and providers need to be installed.
+│ 
+│ 
+╵
+╷
+│ Error: Duplicate provider configuration
+│ 
+│   on main.tf line 19:
+│   19: provider "aws" {
+│ 
+│ A default (non-aliased) provider configuration for "aws" was already given at
+│ backend-setup.tf:1,1-15. If multiple configurations are required, set the "alias" argument
+│ for alternative configurations.
+╵
+Setup complete!
+You can now run terraform plan and terraform apply for your main configuration.
+costas778@DESKTOP-ZBook08:~/Environmentdl/my_terraform_project/environment_serverless1$ 
+
+
+Missing region error: Add the region to your backend.hcl file:
+
+bucket         = "costasbackend778"
+key            = "environment_serverless1/dev/terraform.tfstate"
+region         = "us-west-2"  # or your preferred region
+dynamodb_table = "terraform-locks"
+encrypt        = true
+
+
+Duplicate provider configuration: You have multiple AWS provider 
+declarations. Remove the duplicate provider blocks and keep only one 
+in your main.tf: [1]
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+  backend "s3" {}
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+Invalid credentials error: This indicates your AWS 
+credentials aren't properly configured. You need to:
+
+# Configure your AWS credentials
+export AWS_ACCESS_KEY_ID="your_access_key"
+export AWS_SECRET_ACCESS_KEY="your_secret_key"
+export AWS_REGION="us-west-2"  # or your preferred region
+
+Delete the .terraform directory if it exists:
+rm -rf .terraform
+
+Delete the .terraform.lock.hcl file if it exists:
+rm .terraform.lock.hcl
+
+
+
+aws configure
+
+After making these changes:
+
+Remove any duplicate provider blocks
+
+Ensure your AWS credentials are set
+
+Run:
+
+terraform init -backend-config=backend.hcl
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+
+# Optional - Get the generated bucket name
+
+terraform output s3_bucket_name 
+
+
+5. Populate the module configurations:
+
+api_gateway/
+
+kinesis/
+
+lambda/
+
+storage/
+
+athena/
+
+quicksight/
+
+Create and configure:
+
+lambda/transform.py (base64 transformation code)
+
+Also zip the file up!
+
+
+cd lambda
+zip transform.zip transform.py
+cd ..
+
+
+sql/create_table.sql (Athena table creation)
+
+tests/api_payloads.json (API Gateway test payloads)
+
+root main.tf
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+  required_version = ">= 1.0"
+
+  backend "s3" {
+    # These will be filled in by backend.hcl
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+# Add module blocks for each component:
+
+module "storage" {
+  source = "./modules/storage"
+  # Add required variables
+}
+
+module "api_gateway" {
+  source = "./modules/api_gateway"
+  # Add required variables
+}
+
+module "kinesis" {
+  source = "./modules/kinesis"
+  # Add required variables
+}
+
+module "lambda" {
+  source = "./modules/lambda"
+  # Add required variables
+}
+
+module "athena" {
+  source = "./modules/athena"
+  # Add required variables
+}
+
+module "quicksight" {
+  source = "./modules/quicksight"
+  # Add required variables
+}
+
+
+
+6 Initialize with backend
+
+terraform init -backend-config=backend.hcl
+
+Redundant now!!!
+
+7. Create and populate terraform.tfvars
+
+# Backend Configuration
+bucket_name = "XXXXXXXXXXXXXXXX"
+aws_region  = "us-east-1"  # Keep your existing region
+
+# General Settings
+environment = "dev"
+project_name = "datalake"
+
+# Storage Module Variables
+storage_bucket_prefix = "data-lake"
+raw_data_bucket_name = "XXXXXXXX"
+processed_data_bucket_name = "XXXXXXXXXXXXXX"
+analytics_bucket_name = "XXXXXXXXX"
+
+# API Gateway Module Variables
+api_name = "data-ingestion-api"
+api_description = "API for data ingestion"
+api_stage_name = "dev"
+
+# Kinesis Module Variables
+kinesis_stream_name = "data-stream"
+kinesis_retention_period = 24
+kinesis_shard_count = 1
+
+# Lambda Module Variables
+lambda_runtime = "python3.9"
+lambda_memory_size = 128
+lambda_timeout = 30
+lambda_handler = "transform.handler"
+
+# Athena Module Variables
+athena_database_name = "analytics_db"
+athena_output_location = "athena-results"
+athena_workgroup_name = "primary"
+
+# QuickSight Module Variables
+quicksight_namespace = "default"
+quicksight_user_role = "AUTHOR"
+quicksight_identity_type = "IAM"
+
+# Tags
+tags = {
+  Environment = "dev"
+  Project     = "datalake"
+  ManagedBy   = "terraform"
+}
+
+
+
+8. Create and execute the update-tfvars.sh
+
+#!/bin/bash
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# Check if AWS account ID environment variable is set
+if [ -z "$AWS_ACCOUNT_ID" ]; then
+    echo -e "${RED}Error: AWS_ACCOUNT_ID environment variable is not set${NC}"
+    exit 1
+fi
+
+# Get AWS region from AWS configuration if not explicitly set
+if [ -z "$AWS_REGION" ]; then
+    AWS_REGION=$(aws configure get region)
+fi
+
+# Generate unique identifiers for bucket names
+TIMESTAMP=$(date +%Y%m%d)
+RANDOM_STRING=$(openssl rand -hex 4)
+
+# Update terraform.tfvars
+sed -i "s/XXXXXXXX/raw-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}/" terraform.tfvars
+sed -i "s/XXXXXXXXXXXXXX/processed-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}/" terraform.tfvars
+sed -i "s/XXXXXXXXX/analytics-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}/" terraform.tfvars
+
+echo -e "${GREEN}Successfully updated terraform.tfvars with the following values:${NC}"
+echo "Raw data bucket: raw-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}"
+echo "Processed data bucket: processed-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}"
+echo "Analytics data bucket: analytics-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}"
+
+echo -e "\n${GREEN}You can now run:${NC}"
+echo "terraform plan"
+echo "terraform apply"
+
+chmod +x update-tfvars.sh
+
+./update-tfvars.sh
+
+./update-tfvars.sh
+Successfully updated terraform.tfvars with the following values:
+Raw data bucket: raw-data-961109809677-20241123-27df2bce
+Processed data bucket: processed-data-961109809677-20241123-27df2bce
+Analytics data bucket: analytics-data-961109809677-20241123-27df2bce
+
+You can now run:
+terraform plan
+terraform apply
+
+NOTE: run first terraform init
+
+The plan will show the creation of your infrastructure including:
+
+S3 buckets for storage
+
+API Gateway
+Module files updated 
+
+Kinesis stream
+Module files updated 
+
+Lambda functions
+
+Athena configuration
+
+QuickSight setup
+
+
+
+The final structure provides:
+
+Serverless data lake infrastructure
+
+API Gateway for data ingestion
+
+Kinesis Firehose for data streaming
+
+Lambda for data transformation
+
+S3 for storage
+
+Athena for querying
+
+QuickSight for visualization
+
+Secure state management with S3 and DynamoDB
+
+Team collaboration capabilities
+
+Version control integration
+
+////////////////////////////////////////////////////////////////////////////
+Module scripts
+
+modules/storage/main.tf
+
+resource "aws_s3_bucket" "raw_data" {
+  bucket = var.raw_data_bucket_name
+  tags   = var.tags
+}
+
+resource "aws_s3_bucket" "processed_data" {
+  bucket = var.processed_data_bucket_name
+  tags   = var.tags
+}
+
+resource "aws_s3_bucket" "analytics_data" {
+  bucket = var.analytics_bucket_name
+  tags   = var.tags
+}
+
+# Enable versioning
+resource "aws_s3_bucket_versioning" "raw_data" {
+  bucket = aws_s3_bucket.raw_data.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "processed_data" {
+  bucket = aws_s3_bucket.processed_data.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "analytics_data" {
+  bucket = aws_s3_bucket.analytics_data.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+modules/storage/variables.tf
+
+variable "raw_data_bucket_name" {
+  type        = string
+  description = "Name of the S3 bucket for raw data"
+}
+
+variable "processed_data_bucket_name" {
+  type        = string
+  description = "Name of the S3 bucket for processed data"
+}
+
+variable "analytics_bucket_name" {
+  type        = string
+  description = "Name of the S3 bucket for analytics data"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all resources"
+}
+
+modules/storage/outputs.tf
+
+output "raw_data_bucket_arn" {
+  value       = aws_s3_bucket.raw_data.arn
+  description = "ARN of the raw data bucket"
+}
+
+output "raw_data_bucket_name" {
+  value       = aws_s3_bucket.raw_data.id
+  description = "Name of the raw data bucket"
+}
+
+output "processed_data_bucket_arn" {
+  value       = aws_s3_bucket.processed_data.arn
+  description = "ARN of the processed data bucket"
+}
+
+output "analytics_data_bucket_arn" {
+  value       = aws_s3_bucket.analytics_data.arn
+  description = "ARN of the analytics data bucket"
+}
+
+
+
+modules/api_gateway/main.tf
+
+resource "aws_apigatewayv2_api" "main" {
+  name          = var.api_name
+  description   = var.api_description
+  protocol_type = "HTTP"
+  tags          = var.tags
+}
+
+resource "aws_apigatewayv2_stage" "main" {
+  api_id      = aws_apigatewayv2_api.main.id
+  name        = var.api_stage_name
+  auto_deploy = true
+  tags        = var.tags
+}
+
+resource "aws_apigatewayv2_integration" "kinesis" {
+  api_id             = aws_apigatewayv2_api.main.id
+  integration_type   = "AWS_PROXY"
+  integration_uri    = var.kinesis_stream_arn
+  integration_method = "POST"
+  credentials_arn    = aws_iam_role.api_gateway.arn
+}
+
+resource "aws_apigatewayv2_route" "kinesis" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "POST /data"
+  target    = "integrations/${aws_apigatewayv2_integration.kinesis.id}"
+}
+
+# IAM role for API Gateway
+resource "aws_iam_role" "api_gateway" {
+  name = "${var.api_name}-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_gateway" {
+  name = "${var.api_name}-policy"
+  role = aws_iam_role.api_gateway.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "kinesis:PutRecord",
+          "kinesis:PutRecords"
+        ]
+        Resource = [var.kinesis_stream_arn]
+      }
+    ]
+  })
+}
+
+modules/api_gateway/variables.tf
+
+variable "api_name" {
+  type        = string
+  description = "Name of the API Gateway"
+}
+
+variable "api_description" {
+  type        = string
+  description = "Description of the API Gateway"
+}
+
+variable "api_stage_name" {
+  type        = string
+  description = "Name of the API Gateway stage"
+}
+
+variable "kinesis_stream_arn" {
+  type        = string
+  description = "ARN of the Kinesis stream to integrate with"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all resources"
+}
+
+
+modules/api_gateway/outputs.tf
+
+output "api_endpoint" {
+  value       = aws_apigatewayv2_api.main.api_endpoint
+  description = "The API Gateway endpoint URL"
+}
+
+output "api_id" {
+  value       = aws_apigatewayv2_api.main.id
+  description = "The API Gateway ID"
+}
+
+output "stage_name" {
+  value       = aws_apigatewayv2_stage.main.name
+  description = "The API Gateway stage name"
+}
+
+
+
+modules/lambda/main.tf
+
+resource "aws_lambda_function" "transform" {
+  filename         = var.lambda_filename
+  function_name    = "${var.project_name}-transform"
+  role            = aws_iam_role.lambda.arn
+  handler         = var.lambda_handler
+  runtime         = var.lambda_runtime
+  memory_size     = var.lambda_memory_size
+  timeout         = var.lambda_timeout
+
+  environment {
+    variables = {
+      PROCESSED_BUCKET = var.processed_bucket_name
+    }
+  }
+
+  tags = var.tags
+}
+
+resource "aws_iam_role" "lambda" {
+  name = "${var.project_name}-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda" {
+  name = "${var.project_name}-lambda-policy"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = [
+          "${var.raw_bucket_arn}/*",
+          "${var.processed_bucket_arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = ["arn:aws:logs:*:*:*"]
+      }
+    ]
+  })
+}
+
+
+modules/lambda/variables.tf
+
+variable "project_name" {
+  type        = string
+  description = "Name of the project"
+}
+
+variable "lambda_filename" {
+  type        = string
+  description = "Path to the Lambda deployment package"
+}
+
+variable "lambda_handler" {
+  type        = string
+  description = "Lambda function handler"
+}
+
+variable "lambda_runtime" {
+  type        = string
+  description = "Lambda function runtime"
+}
+
+variable "lambda_memory_size" {
+  type        = number
+  description = "Amount of memory in MB for the Lambda function"
+}
+
+variable "lambda_timeout" {
+  type        = number
+  description = "Timeout in seconds for the Lambda function"
+}
+
+variable "raw_bucket_arn" {
+  type        = string
+  description = "ARN of the raw data bucket"
+}
+
+variable "processed_bucket_arn" {
+  type        = string
+  description = "ARN of the processed data bucket"
+}
+
+variable "processed_bucket_name" {
+  type        = string
+  description = "Name of the processed data bucket"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all resources"
+}
+
+
+modules/lambda/outputs.tf
+
+output "function_arn" {
+  value       = aws_lambda_function.transform.arn
+  description = "ARN of the Lambda function"
+}
+
+output "function_name" {
+  value       = aws_lambda_function.transform.function_name
+  description = "Name of the Lambda function"
+}
+
+output "role_arn" {
+  value       = aws_iam_role.lambda.arn
+  description = "ARN of the Lambda IAM role"
+}
+
+
+modules/kinesis/main.tf
+
+resource "aws_kinesis_firehose_delivery_stream" "main" {
+  name        = "${var.project_name}-stream"
+  destination = "s3"
+  tags        = var.tags
+
+  s3_configuration {
+    role_arn   = aws_iam_role.firehose.arn
+    bucket_arn = var.raw_bucket_arn
+    prefix     = "raw/"
+    buffer_size        = 5
+    buffer_interval    = 300
+    compression_format = "GZIP"
+  }
+}
+
+resource "aws_iam_role" "firehose" {
+  name = "${var.project_name}-firehose-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "firehose.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "firehose" {
+  name = "${var.project_name}-firehose-policy"
+  role = aws_iam_role.firehose.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.raw_bucket_arn,
+          "${var.raw_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+
+modules/kinesis/variables.tf
+
+variable "project_name" {
+  type        = string
+  description = "Name of the project"
+}
+
+variable "raw_bucket_arn" {
+  type        = string
+  description = "ARN of the raw data bucket"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all resources"
+}
+
+
+modules/kinesis/outputs.tf
+
+output "firehose_arn" {
+  value       = aws_kinesis_firehose_delivery_stream.main.arn
+  description = "ARN of the Kinesis Firehose delivery stream"
+}
+
+output "firehose_name" {
+  value       = aws_kinesis_firehose_delivery_stream.main.name
+  description = "Name of the Kinesis Firehose delivery stream"
+}
+
+output "role_arn" {
+  value       = aws_iam_role.firehose.arn
+  description = "ARN of the Firehose IAM role"
+}
+
+
+modules/athena/main.tf
+
+resource "aws_athena_database" "main" {
+  name   = var.database_name
+  bucket = var.analytics_bucket_name
+}
+
+resource "aws_athena_workgroup" "main" {
+  name = var.workgroup_name
+
+  configuration {
+    enforce_workgroup_configuration    = true
+    publish_cloudwatch_metrics_enabled = true
+
+    result_configuration {
+      output_location = "s3://${var.analytics_bucket_name}/athena-results/"
+    }
+  }
+
+  tags = var.tags
+}
+
+resource "aws_athena_named_query" "create_table" {
+  name      = "create-table-query"
+  workgroup = aws_athena_workgroup.main.id
+  database  = aws_athena_database.main.name
+  query     = file(var.create_table_sql_path)
+}
+
+
+modules/athena/variables.tf
+
+variable "database_name" {
+  type        = string
+  description = "Name of the Athena database"
+}
+
+variable "workgroup_name" {
+  type        = string
+  description = "Name of the Athena workgroup"
+}
+
+variable "analytics_bucket_name" {
+  type        = string
+  description = "Name of the analytics S3 bucket"
+}
+
+variable "create_table_sql_path" {
+  type        = string
+  description = "Path to the SQL file containing table creation statements"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all resources"
+}
+
+
+modules/athena/outputs.tf
+
+output "database_name" {
+  value       = aws_athena_database.main.name
+  description = "Name of the Athena database"
+}
+
+output "workgroup_name" {
+  value       = aws_athena_workgroup.main.name
+  description = "Name of the Athena workgroup"
+}
+
+
+modules/quicksight/main.tf
+
+resource "aws_quicksight_data_source" "athena" {
+  aws_account_id = data.aws_caller_identity.current.account_id
+  data_source_id = "${var.project_name}-athena-source"
+  name           = "Athena Data Source"
+  type           = "ATHENA"
+  
+  parameters {
+    athena {
+      work_group = var.athena_workgroup_name
+    }
+  }
+
+  permissions {
+    actions   = ["quicksight:UpdateDataSourcePermissions", "quicksight:DescribeDataSource", "quicksight:DescribeDataSourcePermissions", "quicksight:PassDataSource", "quicksight:UpdateDataSource", "quicksight:DeleteDataSource"]
+    principal = "arn:aws:quicksight:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:user/default/${var.quicksight_user}"
+  }
+
+  tags = var.tags
+}
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+
+modules/quicksight/variables.tf
+
+variable "project_name" {
+  type        = string
+  description = "Name of the project"
+}
+
+variable "athena_workgroup_name" {
+  type        = string
+  description = "Name of the Athena workgroup"
+}
+
+variable "quicksight_user" {
+  type        = string
+  description = "QuickSight user name"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all resources"
+}
+
+
+modules/quicksight/outputs.tf
+
+output "data_source_arn" {
+  value       = aws_quicksight_data_source.athena.arn
+  description = "ARN of the QuickSight data source"
+}
+
+output "data_source_id" {
+  value       = aws_quicksight_data_source.athena.data_source_id
+  description = "ID of the QuickSight data source"
+}
+
+
+
+
+lambda/transform.py
+
+import json
+import boto3
+import base64
+
+output = []
+
+def lambda_handler(event, context):
+
+    for record in event['records']:
+        payload = base64.b64decode(record['data']).decode('utf-8')
+
+        row_w_newline = payload + "\n"
+        row_w_newline = base64.b64encode(row_w_newline.encode('utf-8'))
+
+        output_record = {
+            'recordId': record['recordId'],
+            'result': 'Ok',
+            'data': row_w_newline
+        }
+        output.append(output_record)
+
+    return {'records': output}
+
+
+zip transform.zip transform.py
+cd ..
+
+api_payloads.json
+
+{
+  "test_payloads": [
+    {
+      "element_clicked": "entree_1",
+      "time_spent": 67,
+      "source_menu": "restaurant_name",
+      "created_at": "2022-09-11 23:00:00"
+    },
+    {
+      "element_clicked": "entree_1",
+      "time_spent": 12,
+      "source_menu": "restaurant_name",
+      "created_at": "2022-09-11 23:00:00"
+    },
+    {
+      "element_clicked": "entree_4",
+      "time_spent": 32,
+      "source_menu": "restaurant_name",
+      "createdAt": "2022-09-11 23:00:00"
+    },
+    {
+      "element_clicked": "drink_1",
+      "time_spent": 15,
+      "source_menu": "restaurant_name",
+      "created_at": "2022-09-11 23:00:00"
+    },
+    {
+      "element_clicked": "drink_3",
+      "time_spent": 14,
+      "source_menu": "restaurant_name",
+      "created_at": "2022-09-11 23:00:00"
+    }
+  ]
+}
+
