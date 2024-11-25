@@ -1,9 +1,5 @@
 terraform {
-  backend "s3" {
-    bucket = var.bucket_name
-    key    = var.key
-    region = var.aws_region
-  }
+  required_version = ">= 0.12"
 }
 
 provider "aws" {
