@@ -1,65 +1,67 @@
 terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
+  backend "s3" {
+    bucket = var.bucket_name
+    key    = var.key
+    region = var.aws_region
   }
-  required_version = ">= 1.0"
-
-  backend "s3" {}  # Comment this out temporarily
 }
 
-# Remove or comment out this provider block
-# provider "aws" {
-#   region = var.aws_region
-# }
-
-# Add module blocks for each component:
+provider "aws" {
+  region = var.aws_region
+}
 
 module "storage" {
   source = "./modules/storage"
-  # Add required variables
+  raw_data_bucket_name = var.raw_data_bucket_name
+  processed_data_bucket_name = var.processed_data_bucket_name
+  analytics_bucket_name = var.analytics_bucket_name
+  tags = var.tags
 }
 
 module "api_gateway" {
   source = "./modules/api_gateway"
-  
-  api_name        = "clickstream-ingest-poc"
-  api_description = "API for clickstream data ingestion"
-  api_stage_name  = "dev"
-  aws_region      = var.aws_region
-  
-  firehose_stream_name = module.kinesis.firehose_stream_name
-  firehose_stream_arn  = module.kinesis.firehose_stream_arn
-  
-  tags = {
-    Environment = "dev"
-    Project     = "clickstream"
-  }
+  api_name = var.api_name
+  api_description = var.api_description
+  api_stage_name = var.api_stage_name
+  kinesis_stream_arn = var.kinesis_stream_arn
+  tags = var.tags
 }
 
 module "kinesis" {
   source = "./modules/kinesis"
-  # Add required variables
+  project_name = var.project_name
+  raw_bucket_arn = var.raw_bucket_arn
+  tags = var.tags
 }
 
 module "lambda" {
   source = "./modules/lambda"
-  # Add required variables
+  project_name = var.project_name
+  lambda_filename = var.lambda_filename
+  lambda_handler = var.lambda_handler
+  lambda_runtime = var.lambda_runtime
+  lambda_memory_size = var.lambda_memory_size
+  lambda_timeout = var.lambda_timeout
+  raw_bucket_arn = var.raw_bucket_arn
+  processed_bucket_arn = var.processed_bucket_arn
+  processed_bucket_name = var.processed_bucket_name
+  tags = var.tags
 }
 
 module "athena" {
   source = "./modules/athena"
-  # Add required variables
+  database_name = var.athena_database_name
+  workgroup_name = var.athena_workgroup_name
+  analytics_bucket_name = var.analytics_bucket_name
+  create_table_sql_path = var.create_table_sql_path
+  tags = var.tags
 }
 
 module "quicksight" {
   source = "./modules/quicksight"
-  # Add required variables
+  project_name = var.project_name
+  athena_workgroup_name = var.athena_workgroup_name
+  quicksight_user = var.quicksight_user
+  tags = var.tags
 }
 

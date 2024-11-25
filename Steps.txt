@@ -723,13 +723,26 @@ chmod +x update-tfvars.sh
 
 ./update-tfvars.sh
 Successfully updated terraform.tfvars with the following values:
-Raw data bucket: raw-data-961109809677-20241123-27df2bce
-Processed data bucket: processed-data-961109809677-20241123-27df2bce
-Analytics data bucket: analytics-data-961109809677-20241123-27df2bce
+Raw data bucket: raw-data-your_aws_account_id-20241124-6b891dab
+Processed data bucket: processed-data-your_aws_account_id-20241124-6b891dab
+Analytics data bucket: analytics-data-your_aws_account_id-20241124-6b891dab
 
 You can now run:
 terraform plan
 terraform apply
+
+export AWS_ACCOUNT_ID="your_aws_account_id"
+./update-tfvars.sh
+
+
+
+
+
+You can now run:
+terraform plan
+terraform apply
+
+
 
 NOTE: run first terraform init
 
@@ -772,6 +785,142 @@ Secure state management with S3 and DynamoDB
 Team collaboration capabilities
 
 Version control integration
+
+/////////////////////////////////////////////////////////////////////////
+
+terraform plan
+╷
+│ Warning: Value for undeclared variable
+│ 
+│ The root module does not declare a variable named "athena_output_location" but
+│ a value was found in file "terraform.tfvars". If you meant to use this value,
+│ add a "variable" block to the configuration.
+│ 
+│ To silence these warnings, use TF_VAR_... environment variables to provide
+│ certain "global" settings to all configurations in your organization. To
+│ reduce the verbosity of these warnings, use the -compact-warnings option.
+╵
+╷
+│ Warning: Value for undeclared variable
+│ 
+│ The root module does not declare a variable named "lambda_handler" but a value
+│ was found in file "terraform.tfvars". If you meant to use this value, add a
+│ "variable" block to the configuration.
+│ 
+│ To silence these warnings, use TF_VAR_... environment variables to provide
+│ certain "global" settings to all configurations in your organization. To
+│ reduce the verbosity of these warnings, use the -compact-warnings option.
+╵
+╷
+│ Warning: Values for undeclared variables
+│ 
+│ In addition to the other similar warnings shown, 17 other variable(s) defined
+│ without being declared.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 56, in module "athena":
+│   56: module "athena" {
+│ 
+│ The argument "database_name" is required, but no definition was found.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 56, in module "athena":
+│   56: module "athena" {
+│ 
+│ The argument "workgroup_name" is required, but no definition was found.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 56, in module "athena":
+│   56: module "athena" {
+│ 
+│ The argument "analytics_bucket_name" is required, but no definition was found.
+
+
+module "athena" {
+  source = "./modules/athena"
+
+  database_name          = "your_database_name"
+  workgroup_name         = "your_workgroup_name"
+  analytics_bucket_name  = "your_analytics_bucket"
+  create_table_sql_path  = "path/to/your/create_table.sql"
+  tags                   = {
+    "Environment" = "Production"
+    "Team"        = "Analytics"
+  }
+}
+
+
+terraform plan
+╷
+│ Warning: Value for undeclared variable
+│ 
+│ The root module does not declare a variable named "project_name" but a value
+│ was found in file "terraform.tfvars". If you meant to use this value, add a
+│ "variable" block to the configuration.
+│ 
+│ To silence these warnings, use TF_VAR_... environment variables to provide
+│ certain "global" settings to all configurations in your organization. To
+│ reduce the verbosity of these warnings, use the -compact-warnings option.
+╵
+╷
+│ Warning: Value for undeclared variable
+│ 
+│ The root module does not declare a variable named "quicksight_namespace" but a
+│ value was found in file "terraform.tfvars". If you meant to use this value,
+│ add a "variable" block to the configuration.
+│ 
+│ To silence these warnings, use TF_VAR_... environment variables to provide
+│ certain "global" settings to all configurations in your organization. To
+│ reduce the verbosity of these warnings, use the -compact-warnings option.
+╵
+╷
+│ Warning: Values for undeclared variables
+│ 
+│ In addition to the other similar warnings shown, 17 other variable(s) defined
+│ without being declared.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 24, in module "storage":
+│   24:    module "storage" {
+│ 
+│ The argument "raw_data_bucket_name" is required, but no definition was found.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 24, in module "storage":
+│   24:    module "storage" {
+│ 
+│ The argument "processed_data_bucket_name" is required, but no definition was
+│ found.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 24, in module "storage":
+│   24:    module "storage" {
+│ 
+│ The argument "analytics_bucket_name" is required, but no definition was found.
+╵
+╷
+│ Error: Missing required argument
+│ 
+│   on main.tf line 24, in module "storage":
+│   24:    module "storage" {
+│ 
+│ The argument "tags" is required, but no definition was found.
+╵
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////
 Module scripts

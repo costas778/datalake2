@@ -6,9 +6,11 @@ resource "aws_lambda_function" "transform" {
   runtime         = var.lambda_runtime
   memory_size     = var.lambda_memory_size
   timeout         = var.lambda_timeout
+  source_code_hash = filebase64sha256(var.lambda_filename)
 
   environment {
     variables = {
+      RAW_BUCKET_ARN       = var.raw_bucket_arn
       PROCESSED_BUCKET = var.processed_bucket_name
     }
   }
