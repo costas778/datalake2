@@ -35,8 +35,8 @@ PROCESSED_DATA_BUCKET="processed-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_ST
 ANALYTICS_DATA_BUCKET="analytics-data-${AWS_ACCOUNT_ID}-${TIMESTAMP}-${RANDOM_STRING}"
 
 # Update backend.tfvars
-sed -i "s|bucket = \"\"|bucket = \"${STATE_BUCKET}\"|" backend.tfvars
-sed -i "s|key    = \"\"|key    = \"${STATE_KEY}\"|" backend.tfvars
+sed -i "s|bucket = \".*\"|bucket = \"${STATE_BUCKET}\"|" backend.tfvars
+sed -i "s|key = \".*\"|key = \"${STATE_KEY}\"|" backend.tfvars
 
 
 # Update terraform.tfvars
