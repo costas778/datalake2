@@ -32,3 +32,13 @@ variable "tags" {
   type        = map(string)
   description = "Tags to apply to all resources"
 }
+
+variable "kinesis_stream_arn" {
+  description = "ARN of the Kinesis stream"
+  type        = string
+}
+
+variable "kinesis_stream_name" {
+  description = "Name of the Kinesis stream"
+  type        = string
+}

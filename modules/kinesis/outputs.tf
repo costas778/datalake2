@@ -1,14 +1,11 @@
 output "firehose_arn" {
-  value       = aws_kinesis_firehose_delivery_stream.main.arn
-  description = "ARN of the Kinesis Firehose delivery stream"
+  value = aws_kinesis_firehose_delivery_stream.firehose.arn
 }
 
 output "firehose_name" {
-  value       = aws_kinesis_firehose_delivery_stream.main.name
-  description = "Name of the Kinesis Firehose delivery stream"
+  value = aws_kinesis_firehose_delivery_stream.firehose.name
 }
 
 output "role_arn" {
-  value       = aws_iam_role.firehose.arn
-  description = "ARN of the Firehose IAM role"
+  value = aws_iam_role.firehose_role.arn
 }

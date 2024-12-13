@@ -17,3 +17,10 @@ variable "tags" {
   type        = map(string)
   description = "Tags to apply to all resources"
 }
+
+variable "account_id" {
+  type        = string
+  description = "AWS Account ID"
+}
+
+

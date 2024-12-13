@@ -1,0 +1,5 @@
+# Backend Configuration
+#bucket_name = "raw-data-590184104031-20241125-aca0e916"
+#aws_region  = "us-east-1"
+key    = "environment_serverless1/dev/terraform.tfstate"
+region = "us-east-1"

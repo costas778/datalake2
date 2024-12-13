@@ -1,19 +1,22 @@
+# modules/lambda/main.tf
+
 resource "aws_lambda_function" "transform" {
-  filename         = var.lambda_filename
-  function_name    = "${var.project_name}-transform"
-  role            = aws_iam_role.lambda.arn
-  handler         = var.lambda_handler
-  runtime         = var.lambda_runtime
-  memory_size     = var.lambda_memory_size
-  timeout         = var.lambda_timeout
+  function_name = "${var.project_name}-transform"
+  runtime       = var.lambda_runtime
+  handler       = var.lambda_handler
+  role          = aws_iam_role.lambda.arn
+  filename      = var.lambda_filename
   source_code_hash = filebase64sha256(var.lambda_filename)
 
   environment {
     variables = {
-      RAW_BUCKET_ARN       = var.raw_bucket_arn
-      PROCESSED_BUCKET = var.processed_bucket_name
+      RAW_BUCKET_ARN        = var.raw_bucket_arn
+      PROCESSED_BUCKET_ARN  = var.processed_bucket_arn
     }
   }
+
+  memory_size = var.lambda_memory_size
+  timeout     = var.lambda_timeout
 
   tags = var.tags
 }
@@ -45,8 +48,8 @@ resource "aws_iam_role_policy" "lambda" {
       {
         Effect = "Allow"
         Action = [
-          "s3:PutObject",
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:PutObject"
         ]
         Resource = [
           "${var.raw_bucket_arn}/*",
@@ -60,9 +63,8 @@ resource "aws_iam_role_policy" "lambda" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = ["arn:aws:logs:*:*:*"]
+        Resource = "*"
       }
     ]
   })
 }
-

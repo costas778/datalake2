@@ -1,0 +1,81 @@
+
+# General Settings
+environment  = "dev"
+project_name = "datalake"
+
+# Storage Module Variables
+storage_bucket_prefix      = "data-lake"
+raw_data_bucket_name = "raw-data-961109809677-20241203-9c97ee0a2041b2ec"
+processed_data_bucket_name = "processed-data-961109809677-20241203-9c97ee0a2041b2ec"
+analytics_bucket_name = "analytics-data-961109809677-20241203-9c97ee0a2041b2ec"
+
+# API Gateway Module Variables
+api_name           = "datalake-api"
+api_description    = "API for data ingestion"
+api_stage_name     = "dev"
+
+# Kinesis Module Variables
+#kinesis_stream_name = ""
+kinesis_retention_period = 24
+kinesis_shard_count      = 1
+
+
+# Lambda Module Variables
+lambda_runtime        = "python3.8"
+lambda_memory_size    = 128
+lambda_timeout        = 30
+lambda_handler        = "transform.lambda_handler"
+lambda_filename       = "lambda/transform.zip"
+#processed_data_bucket_name = "processed-data-381492256296-20241129-9424847d4ab94a27"
+
+# Athena Module Variables
+athena_database_name   = "datalake_db"
+athena_output_location = "s3://athena-query-results/"
+#athena_workgroup_name  = "primary"
+athena_workgroup_name = "datalake_workgroup-7e6ab79a"
+create_table_sql_path  = "sql/create_table.sql"
+
+
+# Other variable assignments
+quicksight_namespace     = "default"
+quicksight_user_role     = "AUTHOR"
+quicksight_identity_type = "IAM"
+quicksight_user           = "arn:aws:iam::961109809677:user/workshop"  # Dedicated IAM User ARN
+quicksight_user_email    = "costas778@gmail.com"                   # Valid email for IAM user
+
+quicksight_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "quicksight:RegisterUser",
+        "quicksight:DescribeNamespace",
+        "quicksight:ListUsers",
+        "quicksight:UpdateUser",
+        "quicksight:DeleteUser"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+
+# Tags
+tags = {
+  Environment = "dev"
+  Project     = "datalake"
+}
+
+# Kinesis Configuration
+raw_bucket_arn = "arn:aws:s3:::raw-data-961109809677-20241203-9c97ee0a2041b2ec"
+processed_bucket_arn = "arn:aws:s3:::processed-data-975049963324-20241128-d3f17b6a"
+
+# Firehose Configuration
+firehose_stream_name = "datalake-ingest-20241203-9c97ee0a2041b2ec"
+firehose_stream_arn = "arn:aws:firehose:us-east-1:961109809677:deliverystream/datalake-ingest-20241203-9c97ee0a2041b2ec"
+
+# Kinesis Configuration
+kinesis_stream_name = "kinesis-stream-961109809677-20241203-9c97ee0a2041b2ec"
+kinesis_stream_arn = "arn:aws:kinesis:us-east-1:961109809677:stream/kinesis-stream-961109809677-20241203-9c97ee0a2041b2ec"
